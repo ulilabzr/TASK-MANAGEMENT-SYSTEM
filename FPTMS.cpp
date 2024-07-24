@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <iomanip>
 #include <conio.h>
+#include <ctime>
 
 using namespace std;
 struct Task
@@ -13,9 +14,90 @@ struct Task
     string description;
     bool completed;
     int priority;
-    string date;
+    tm date;
 };
 
+bool isValidDate(const string &date)
+{
+
+    if (date.length() != 16 || date[2] != '/' || date[5] != '/' || date[10] != ' ' || date[13] != ':')
+    {
+        return false;
+    }
+
+    try
+    {
+        int day = stoi(date.substr(0, 2));
+        int month = stoi(date.substr(3, 2));
+        int year = stoi(date.substr(6, 4));
+        int hour = stoi(date.substr(9, 2));
+        int minute = stoi(date.substr(12, 2));
+
+        if (day < 1 || day > 31 || month < 1 || month > 12 || hour < 0 || hour > 23 || minute < 0 || minute > 59)
+        {
+            return false;
+        }
+
+        if ((month == 4 || month == 6 || month == 9 || month == 11) && day > 30)
+        {
+            return false;
+        }
+        if (month == 2)
+        {
+            bool leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+            if ((leap && day > 29) || (!leap && day > 28))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    catch (const invalid_argument &)
+    {
+        return false;
+    }
+    catch (const out_of_range &)
+    {
+        return false;
+    }
+}
+
+tm inputDL()
+{
+    string dl;
+    tm DL = {};
+    bool validInput = false;
+
+    while (!validInput)
+    {
+        cout << "INPUT THE DATE (dd/mm/yyyy hh:mm): ";
+        getline(cin, dl);
+
+        if (isValidDate(dl))
+        {
+            DL.tm_mday = stoi(dl.substr(0, 2));
+            DL.tm_mon = stoi(dl.substr(3, 2)) - 1;
+            DL.tm_year = stoi(dl.substr(6, 4)) - 1900;
+            DL.tm_hour = stoi(dl.substr(11, 2));
+            DL.tm_min = stoi(dl.substr(14, 2));
+            validInput = true;
+        }
+        else
+        {
+            cout << "WARNING : Invalid input !, try to input the right choices" << endl;
+        }
+    }
+
+    return DL;
+}
+
+string formatDate(const tm &date)
+{
+    char buffer[20];
+    strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M", &date);
+    return string(buffer);
+}
 const int MAX_TASKS = 100;
 Task tasks[MAX_TASKS];
 int taskCount = 0;
@@ -45,7 +127,7 @@ void credit()
 
 int countSLL()
 {
-    cur = head;
+    Node *cur = head;
     int jumlah = 0;
     while (cur != NULL)
     {
@@ -60,36 +142,22 @@ void createTask()
     system("cls");
     Task task;
     cout << "INPUT TASK DESC                     : ";
-    cin.ignore(); // clear the input buffer
+    cin.ignore();
     getline(cin, task.description);
     task.completed = false;
     cout << "INPUT TASK PRIORITY (1-HIGH, 5-LOW) : ";
     cin >> task.priority;
-    
-    cin.ignore(100, '\n');
-    cout << "INPUT TASK DUE DATE (DD/MM/YYYY)    : ";
-    getline(cin, task.date);
 
-    if (!task.date.empty())
-    {
-        Node *newNode = new Node;
-        newNode->task = task;
-        newNode->next = head;
-        head = newNode;
-        system("cls");
-        cout << "TASK ALREADY ADDED !\n";
-        system("pause");
-    }
-    else
-    {
-        Node *newNode = new Node;
-        newNode->task = task;
-        newNode->next = head;
-        head = newNode;
-        system("cls");
-        cout << "TASK ALREADY ADDED !\n";
-        system("pause");
-    }
+    cin.ignore(100, '\n');
+    task.date = inputDL();
+
+    Node *newNode = new Node;
+    newNode->task = task;
+    newNode->next = head;
+    head = newNode;
+    system("cls");
+    cout << "TASK ALREADY ADDED !\n";
+    system("pause");
 }
 
 void showTasks()
@@ -110,7 +178,7 @@ void showTasks()
         cout << "|" << std::setw(25) << curr->task.description << std::setw(25) << "|"
              << std::setw(15) << (curr->task.completed ? "Selesai" : "Belum Selesai") << std::setw(15) << "|"
              << std::setw(10) << curr->task.priority << std::setw(10) << "|"
-             << std::setw(15) << curr->task.date << std::setw(15) << "|" << endl;
+             << std::setw(14) << formatDate(curr->task.date) << std::setw(14) << "|" << endl;
         ;
         curr = curr->next;
     }
@@ -123,7 +191,7 @@ void searchTask()
 {
     cin.ignore(); // To clear the input buffer
     string taskNumber;
-    cout << "Masukkan deskripsi tugas yang ingin dicari: ";
+    cout << "Enter the description of the task you want to search for: ";
     getline(cin, taskNumber);
 
     Node *curr = head;
@@ -134,11 +202,11 @@ void searchTask()
 
     if (curr == NULL)
     {
-        cout << "Tugas tidak ditemukan.\n";
+        cout << "Task not found.\n";
     }
     else
     {
-        cout << "Tugas ditemukan: " << curr->task.description << " (Prioritas: " << curr->task.priority << ", " << (curr->task.completed ? "Selesai" : "Belum Selesai") << ", " << "Tenggat: " << curr->task.date << ")\n";
+        cout << "Task found: " << curr->task.description << " (Prioritas: " << curr->task.priority << ", " << (curr->task.completed ? "Selesai" : "Belum Selesai") << ", " << "Tenggat: " << formatDate(curr->task.date) << ")\n";
     }
     system("pause");
 }
@@ -147,7 +215,7 @@ void changeTaskName()
 {
     cin.ignore(); // clear the input buffer
     string oldName, newName;
-    cout << "Masukkan deskripsi tugas yang ingin diubah namanya: ";
+    cout << "Enter the description of the task you want to rename: ";
     getline(cin, oldName);
 
     Node *curr = head;
@@ -158,14 +226,14 @@ void changeTaskName()
 
     if (curr == NULL)
     {
-        cout << "Tugas tidak ditemukan.\n";
+        cout << "Task not found.\n";
     }
     else
     {
-        cout << "Masukkan nama baru untuk tugas: ";
+        cout << "Enter a new name for the task: ";
         getline(cin, newName);
         curr->task.description = newName;
-        cout << "Nama tugas berhasil diubah!\n";
+        cout << "Task name successfully changed!\n";
     }
     system("pause");
 }
@@ -174,7 +242,7 @@ void changeMark()
 {
     cin.ignore();
     string taskNumber;
-    cout << "Masukkan deskripsi tugas yang ingin ditandai selesai: ";
+    cout << "Enter the description of the task you want to mark as completed: ";
     getline(cin, taskNumber);
 
     Node *curr = head;
@@ -185,19 +253,19 @@ void changeMark()
 
     if (curr == NULL)
     {
-        cout << "Tugas tidak ditemukan.\n";
+        cout << "Task not found.\n";
         return;
     }
 
     curr->task.completed = true;
-    cout << "Tugas " << taskNumber << " berhasil ditandai selesai!\n";
+    cout << "Tugas " << taskNumber << " successfully marked as complete!\n";
     system("pause");
 }
 
 void changeTaskPriority()
 {
     string taskDescription;
-    cout << "Masukkan deskripsi tugas yang ingin diubah prioritasnya: ";
+    cout << "Enter the description of the task you want to reprioritize: ";
     getline(cin, taskDescription);
 
     Node *curr = head;
@@ -208,29 +276,30 @@ void changeTaskPriority()
 
     if (curr == NULL)
     {
-        cout << "Tugas tidak ditemukan.\n";
+        cout << "Task not found.\n";
         return;
     }
 
     int newPriority;
-    cout << "Masukkan prioritas baru (1-tinggi, 5-rendah): ";
+    cout << "Enter a new priority (1-high, 5-low): ";
     cin >> newPriority;
     cin.ignore();
 
     if (newPriority < 1 || newPriority > 5)
     {
-        cout << "Prioritas tidak valid.\n";
+        cout << "Invalid prioritization.\n";
         return;
     }
 
     curr->task.priority = newPriority;
-    cout << "Prioritas tugas " << taskDescription << " berhasil diubah!\n";
+    cout << "Task prioritization " << taskDescription << " successfully transformed!\n";
 }
 
 void changeDate()
 {
+    cin.ignore();
     string taskDescription;
-    cout << "Masukkan deskripsi tugas yang ingin diubah tenggatnya : ";
+    cout << "Enter the description of the task you want to change the deadline for: ";
     getline(cin, taskDescription);
 
     Node *curr = head;
@@ -241,35 +310,31 @@ void changeDate()
 
     if (curr == NULL)
     {
-        cout << "Tugas tidak ditemukan.\n";
+        cout << "Task not found.\n";
         return;
     }
 
-    string newDate;
-    cout << "Masukkan tanggal baru (DD/MM/YYYY)" << endl;
-    cin >> newDate;
-    cin.ignore();
-
-    curr->task.date = newDate;
-    cout << "Tenggat tugas " << taskDescription << " berhasil diubah!\n";
+    curr->task.date = inputDL();
+    cout << "Due date " << taskDescription << " successfully changed!\n";
+    system("pause");
 }
-
 void sortTasksAscending()
 {
     if (head == NULL || head->next == NULL)
     {
-        return; // No need to sort if list has 0 or 1 elements
+        return;
     }
 
-    Node *sorted = NULL;  // Sorted list
-    Node *current = head; // Current node to be inserted
-
+    Node *sorted = NULL;
+    Node *current = head;
     while (current != NULL)
     {
-        Node *next = current->next; // Store next node
+        Node *next = current->next;
 
-        // Insert current node into sorted list
-        if (sorted == NULL || sorted->task.description >= current->task.description)
+        if (sorted == NULL ||
+            sorted->task.completed > current->task.completed ||
+            (sorted->task.completed == current->task.completed && sorted->task.priority > current->task.priority) ||
+            (sorted->task.completed == current->task.completed && sorted->task.priority == current->task.priority && mktime(&sorted->task.date) > mktime(&current->task.date)))
         {
             current->next = sorted;
             sorted = current;
@@ -277,7 +342,10 @@ void sortTasksAscending()
         else
         {
             Node *traverse = sorted;
-            while (traverse->next != NULL && traverse->next->task.description < current->task.description)
+            while (traverse->next != NULL &&
+                   (traverse->next->task.completed < current->task.completed ||
+                    (traverse->next->task.completed == current->task.completed && traverse->next->task.priority < current->task.priority) ||
+                    (traverse->next->task.completed == current->task.completed && traverse->next->task.priority == current->task.priority && mktime(&traverse->next->task.date) < mktime(&current->task.date))))
             {
                 traverse = traverse->next;
             }
@@ -285,12 +353,12 @@ void sortTasksAscending()
             traverse->next = current;
         }
 
-        current = next; // Move to next node
+        current = next;
     }
 
-    head = sorted; // Update head of sorted list
+    head = sorted;
     system("cls");
-    cout << "Tugas berhasil di sorting!" << endl;
+    cout << "Tasks sorted successfully in ascending order!" << endl;
     system("pause");
 }
 
@@ -298,18 +366,20 @@ void sortTasksDescending()
 {
     if (head == NULL || head->next == NULL)
     {
-        return; // No need to sort if list has 0 or 1 elements
+        return;
     }
 
-    Node *sorted = NULL;  // Sorted list
-    Node *current = head; // Current node to be inserted
+    Node *sorted = NULL;
+    Node *current = head;
 
     while (current != NULL)
     {
-        Node *next = current->next; // Store next node
+        Node *next = current->next;
 
-        // Insert current node into sorted list
-        if (sorted == NULL || sorted->task.description <= current->task.description)
+        if (sorted == NULL ||
+            sorted->task.completed < current->task.completed ||
+            (sorted->task.completed == current->task.completed && sorted->task.priority < current->task.priority) ||
+            (sorted->task.completed == current->task.completed && sorted->task.priority == current->task.priority && mktime(&sorted->task.date) < mktime(&current->task.date)))
         {
             current->next = sorted;
             sorted = current;
@@ -317,7 +387,10 @@ void sortTasksDescending()
         else
         {
             Node *traverse = sorted;
-            while (traverse->next != NULL && traverse->next->task.description > current->task.description)
+            while (traverse->next != NULL &&
+                   (traverse->next->task.completed > current->task.completed ||
+                    (traverse->next->task.completed == current->task.completed && traverse->next->task.priority > current->task.priority) ||
+                    (traverse->next->task.completed == current->task.completed && traverse->next->task.priority == current->task.priority && mktime(&traverse->next->task.date) > mktime(&current->task.date))))
             {
                 traverse = traverse->next;
             }
@@ -325,20 +398,20 @@ void sortTasksDescending()
             traverse->next = current;
         }
 
-        current = next; // Move to next node
+        current = next;
     }
 
-    head = sorted; // Update head of sorted list
+    head = sorted;
     system("cls");
-    cout << "Tugas berhasil di sorting!" << endl;
+    cout << "Tasks sorted successfully in descending order!" << endl;
     system("pause");
 }
 
 void deleteTask()
 {
-    cin.ignore(); // clear the input buffer
+    cin.ignore();
     string taskDescription;
-    cout << "Masukkan deskripsi tugas yang ingin dihapus: ";
+    cout << "Enter the description of the task you want to delete : ";
     getline(cin, taskDescription);
 
     Node *prev = NULL;
@@ -351,7 +424,7 @@ void deleteTask()
 
     if (curr == NULL)
     {
-        cout << "Tugas tidak ditemukan.\n";
+        cout << "Task not found.\n";
     }
     else
     {
@@ -365,7 +438,7 @@ void deleteTask()
         }
 
         delete curr;
-        cout << "Tugas " << taskDescription << " berhasil dihapus!\n";
+        cout << "Task " << taskDescription << " successfully deleted!\n";
     }
     system("pause");
 }
